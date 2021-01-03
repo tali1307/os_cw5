@@ -23,6 +23,8 @@ struct {
   struct run *freelist;
 } kmem;
 
+char pg_refcount[PHYSTOP >> PGSHIFT];
+
 void
 kinit()
 {

@@ -5,6 +5,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "elf.h"
+#include "fs.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -29,6 +31,24 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+// handling store page faults for CoW
+void pagefault(uint64 va) {
+  char *mem;
+  pte_t *pte;
+  struct proc *p = myproc();
+
+  pte = walk(p->pagetable, va, 0);
+  *pte &= PTE_W;
+  pa = PTE2PA(*pte);
+  flags = PTE_FLAGS(*pte);
+  if((mem = kalloc()) == 0)
+    kill(p->pid);
+  memmove(mem, (char*)pa, PGSIZE);
+  if(mappages(p->pagetable, va, PGSIZE, pa, flags) != 0){ 
+    uvmunmap()
+  }
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -37,6 +57,7 @@ void
 usertrap(void)
 {
   int which_dev = 0;
+  uint64 va = r_stval();
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
@@ -50,6 +71,9 @@ usertrap(void)
   // save user program counter.
   p->trapframe->epc = r_sepc();
   
+  if(r_scause() == 15) {
+    pagefault(va);
+  }
   if(r_scause() == 8){
     // system call
 
