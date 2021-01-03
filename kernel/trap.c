@@ -36,6 +36,8 @@ void pagefault(uint64 va) {
   char *mem;
   pte_t *pte;
   struct proc *p = myproc();
+  uint64 pa;
+  uint flags;
 
   pte = walk(p->pagetable, va, 0);
   *pte &= PTE_W;
@@ -43,8 +45,9 @@ void pagefault(uint64 va) {
   flags = PTE_FLAGS(*pte);
   if((mem = kalloc()) == 0)
     kill(p->pid);
+  uvmunmap(p->pagetable, va, 1, 0);
   memmove(mem, (char*)pa, PGSIZE);
-  if(mappages(p->pagetable, va, PGSIZE, pa, flags) != 0){ 
+  if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, flags) != 0){ 
     uvmunmap()
   }
 }
